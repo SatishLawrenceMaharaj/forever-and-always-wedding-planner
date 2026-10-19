@@ -1,0 +1,23 @@
+FOREVER & ALWAYS — YOUR WEDDING PLANNER
+=======================================
+
+TO TEST ON YOUR WINDOWS COMPUTER:
+1. Install Node.js 22+ from https://nodejs.org/ (if needed).
+2. Double-click START-WEDDING-PLANNER.bat.
+3. Visit http://localhost:3000
+4. Enter the password: STWed2027
+5. Try adding wedding planners, tasks, budgets and inspiration photos.
+
+The app starts in LOCAL TEST MODE with sample tasks and budget items.
+These are not shared with anyone. No external accounts are required for a preview.
+
+TO USE IT WITH YOUR TEAM ON VERCEL:
+1. Follow google-apps-script/SETUP.md to authorize saving to your Google Drive.
+2. Follow section C of README.md to deploy to Vercel and set environment variables.
+3. Confirm it says 'Google Drive connected', then share your Vercel URL and
+   the wedding website password privately with your planners.
+
+Google Drive folder used:
+https://drive.google.com/drive/folders/1ihLbsZeSl8hZ37Bec7mijpX6zkqr2IC4
+
+Desktop and mobile preview pictures are available in previews/.

@@ -1,0 +1,14 @@
+{
+  "name": "forever-and-always-wedding-planner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Private shared wedding planning workspace for Vercel and Google Drive",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node --env-file=.env.local server.js",
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check lib/app.js && node --check web/app.js && node --check < google-apps-script/Code.gs"
+  }
+}
