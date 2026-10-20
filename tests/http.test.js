@@ -14,7 +14,7 @@ test('password protects the site and API; authorized planners can persist change
   process.chdir(sandbox);
   process.env.WEDDING_PASSWORD='STWed2027';
   process.env.WEDDING_SESSION_SECRET=randomBytes(32).toString('hex');
-  delete process.env.GOOGLE_APPS_SCRIPT_URL;delete process.env.GOOGLE_APPS_SCRIPT_SECRET;
+  delete process.env.GOOGLE_CLIENT_ID;delete process.env.GOOGLE_CLIENT_SECRET;delete process.env.GOOGLE_REFRESH_TOKEN;
   const {handle}=await import('../lib/app.js');
   const http=createServer((req,res)=>{handle(req,res)});
   await new Promise(resolve=>http.listen(0,'127.0.0.1',resolve));

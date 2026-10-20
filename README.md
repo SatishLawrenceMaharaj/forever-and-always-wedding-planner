@@ -1,140 +1,159 @@
-# ♡ Forever & Always — Wedding Planner
+# Forever & Always — Wedding Planner (Direct Google Drive Edition)
 
-A private, fully responsive wedding planning website built with **Node.js (no external runtime dependencies)**. Designed for desktop, tablet, and phones, and configured for deployment on **Vercel**. All planners share one password, and—once connected—the app stores its plans and uploaded photos in your designated **Google Drive folder**.
+A private, responsive Node.js wedding-planning app deployable to **Vercel**, with **Google Drive as its only persistent storage**. No Firebase, Supabase, database subscription, Google Apps Script, or separate backend is involved. The app implements the frontend, login, security, to-do lists, progress dashboard, guest list, budget, vendors, milestones, planning team, and photo upload.
 
-**Wedding site password:** `STWed2027` (set server-side, not stored in browser JavaScript).
+**Wedding site password:** `STWed2027` (set as an environment variable).
 
-**Your Google Drive destination:** https://drive.google.com/drive/folders/1ihLbsZeSl8hZ37Bec7mijpX6zkqr2IC4
+**Existing Google Drive folder:** https://drive.google.com/drive/folders/1ihLbsZeSl8hZ37Bec7mijpX6zkqr2IC4
 
-> **Important:** The Google Drive folder is *not automatically connected* just because its URL was provided. You will need to authorize a small Google Apps Script one time. The app already contains the Google Drive integration, code, folder ID, and step-by-step setup guide.
+## Important: How Google Drive connects
 
-## What's inside?
+Vercel cannot permanently save files in its own filesystem. Your app must obtain **Google Drive API authorization** to save to your private Google Drive folder. This is done using a **one-time, local OAuth authorization**; there is **no Apps Script, no external relay, and no other paid service**.
 
-| Section | What you can do |
-|---|---|
-| Overview | Custom couple names, wedding date countdown, planning progress, budget, guests and inspiration |
-| To-do list | Create, edit, delete, assign, prioritize, categorise, filter and complete tasks across three columns |
-| Inspiration | Upload JPG/PNG/WEBP/GIF photos (up to 3 MB each), or add an image URL; save captions and notes |
-| Budget tracker | Enter estimates and actual spending, track payments and remaining estimated budget, currency settings |
-| Guest list | Names, groups, RSVP statuses, meal requests, plus-ones and notes |
-| Vendors | Businesses, service categories, contacts, quotes, booking statuses and notes |
-| Wedding timeline | Save milestones, locations, dates, times and completion statuses |
-| Planning team | Add planner names/roles, choose a display name, assign tasks and label recent activity |
-| Settings | Custom wedding details, Google Drive status, JSON backup export, recent activity, sign out |
+The app communicates directly with Google Drive:
 
-The interface is **mobile-first responsive** at small sizes, with a bottom tab bar on phones and a sidebar on desktop. Planners see each other's updates on refresh and the app also checks quietly every minute when idle. The server validates changes and uploaded image types. All data and image endpoints require a valid signed, HttpOnly login session.
+`Planners → Your Vercel Node.js app → Google Drive REST API → Your folder`
 
-## A. Test locally in 2 minutes (Windows / macOS / Linux)
+Only the owner completes Google authorization. Other planners use the site link and website password, **not** their personal Google accounts.
 
-### Requirements
-- **Node.js 22 or newer**, available at https://nodejs.org/
-- A web browser
+The Drive folder ID is preconfigured. Files are created as needed:
 
-### Windows: one-click startup
-1. Unzip this project into a folder, e.g. `Documents\Wedding Planner`.
-2. Double-click **`START-WEDDING-PLANNER.bat`**.
-3. Open http://localhost:3000 (the batch file also opens this for you).
-4. Sign in with **`STWed2027`**.
+- `wedding-planner--tasks--<id>.json`, `wedding-planner--guests--<id>.json`, etc. — records saved separately to prevent two planners editing *different* items from overwriting one shared file
+- `wedding-planner--settings.json` — wedding configuration
+- `wedding-planner--activity--<id>.json` — history of additions and updates
+- `Wedding Planner Images/` — uploaded JPG, PNG, WebP and GIF images (3 MB maximum each)
 
-### Terminal startup (any OS)
-```bash
-cd wedding-planner
-npm run dev
+Changes are shared on refresh and checked periodically by the interface. Edits to the **same** item can still conflict (last save wins); do not have two planners edit a single entry at the same instant. This is a lightweight shared Drive file store, not a transactional relational database.
+
+## 1 — Create Google API credentials (free)
+
+1. Visit **[Google Cloud Console](https://console.cloud.google.com/)** using the Google account that owns or can edit your wedding folder.
+2. Create a new project (e.g. `Forever and Always Wedding`). You do **not** need to add a billing account for this integration.
+3. Go to **APIs & Services → Library**, find **Google Drive API**, then select **Enable**.
+4. Go to **Google Auth Platform** → **Branding**. Configure an app name (`Forever and Always Wedding`), your support email and developer contact email.
+5. Under **Audience**, choose **External** if using a personal Gmail account, and add **your own Google address** under Test users. If an internal Workspace app is possible, use the appropriate internal setup.
+6. Under **Data Access / Scopes**, request the Google Drive API scope `https://www.googleapis.com/auth/drive`.
+7. Go to **Clients → Create client**, select **Desktop app**, and create an OAuth client called `Wedding Planner Owner Setup`.
+8. Copy the **Client ID** and **Client secret**. Keep the secret private. They are only used by your app backend and the local setup script.
+
+**Important scope note:** This version targets an **existing Drive folder by ID**, and requests Drive's full-access OAuth scope. Google classifies that scope as *restricted*. It grants the server broad capabilities under your Google identity, even though this app is programmed to use only the wedding folder. Use a dedicated Google account with access to only the wedding folder if you want stronger isolation. For distributing a Google OAuth app publicly, Google may require verification and a security assessment. This version is intended for private, owner-authorized use.
+
+**Important token note:** Google generally makes refresh tokens from **External + Testing** consent apps expire in **7 days**. For long-term use, publish the OAuth consent app to **In production** where allowed, or expect to rerun the authorization command after the token expires. You can keep the *wedding website* private even if the Google consent screen is in production; those are separate concepts. See [Google's OAuth rules](https://developers.google.com/identity/protocols/oauth2).
+
+## 2 — Connect your Google account locally
+
+Download/extract this project. Install [Node.js 22+](https://nodejs.org/).
+
+Open `.env.local` in the project root, and fill in:
+
+```dotenv
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 ```
 
-The zip includes a **local-only `.env.local`** with the requested wedding password and a random development session key. No `npm install` is needed because the app uses only built-in Node.js APIs. If your port is already in use, change `PORT=3000` in `.env.local`.
+Run from PowerShell in the extracted project:
 
-**Try it out:** Demo tasks, a budget and inspiration references are preloaded **only in local test mode**. Add a planner, create a task, mark it done, add an idea with a photo, then check the dashboard. Local testing data goes to `.local-data/wedding-data.json` and uploaded files to `.local-data/uploads/`. That folder is excluded from Git and does not deploy or synchronize to Google Drive automatically. The demo is not your real wedding plan.
+```powershell
+npm run connect:drive
+```
 
-Stop the local server with `Ctrl + C` in the terminal.
+The command displays a Google sign-in URL. **Open the URL on the SAME computer** running the command, choose the account with access to your wedding folder, and approve. A local callback receives the refresh token; the token is automatically saved to your gitignored `.env.local` file as `GOOGLE_REFRESH_TOKEN`. No tokens are printed into your browser's address bar.
 
-## B. Connect your Google Drive folder for shared planners
+If the Google consent screen says the app isn't verified, carefully confirm that it shows **your own private Google Cloud project's app name** and do not approve a project you don't recognize. Google may block access based on account settings.
 
-Full illustrated-by-steps instructions are in **[`google-apps-script/SETUP.md`](google-apps-script/SETUP.md)**; follow these once:
+## 3 — Set 5 Vercel environment variables
 
-1. Open https://script.google.com/home/projects/create using a Google account with **Editor** access to your wedding folder.
-2. Paste **`google-apps-script/Code.gs`** into the Apps Script editor.
-3. Add an Apps Script **Script property** called `APP_SECRET` containing a random secret of at least 32 characters.
-4. Deploy as a **Web app**, **Execute as: Me**, **Who has access: Anyone**. The private secret is required on every call. Authorize your account's Google Drive access.
-5. Copy the script's `/exec` Web app URL. Set `GOOGLE_APPS_SCRIPT_URL` and `GOOGLE_APPS_SCRIPT_SECRET` in Vercel to the URL and secret.
-
-The bridge **automatically creates** in your given Drive folder:
-- `wedding-planner-data.json` — tasks, inspiration metadata, budgets, guests, vendors, timeline, planners, wedding settings and recent activity.
-- `Wedding Planner Images/` — uploaded photos.
-
-The Drive data is shared with planners **through the website password**, not by granting them OAuth access individually. Google Apps Script uses `LockService` for atomic editing of the shared JSON document to avoid lost updates between concurrent planners.
-
-**Privacy note:** The website password does not alter Google Drive's own folder/file permissions. If your Drive folder is shared publicly, someone may be able to read its contents directly via Drive, even though the wedding website itself is password-protected. Make the folder **Restricted** and only share it with trusted accounts as necessary.
-
-## C. Deploy to Vercel
-
-This is a **Node.js Vercel Functions** project (not Next.js, React or Express). It uses one serverless function and server-rendered password gating, with browser JavaScript for the interactive planning workspace. The `vercel.json` rewrites all site URLs to the protected Node.js handler.
-
-1. Create a private GitHub repository and upload/push the project's files. The `.gitignore` excludes `.env.local`, `.local-data`, and `node_modules`.
-2. Go to https://vercel.com/new and import the repository. Choose **Framework Preset: Other** (not Next.js). Leave Build Command and Output Directory at defaults/blank, because no build is needed.
-3. Set project **Environment Variables** (Production):
+Go to **Vercel → Wedding Planner → Settings → Environment Variables → Production**:
 
 | Variable | Value |
 |---|---|
 | `WEDDING_PASSWORD` | `STWed2027` |
-| `WEDDING_SESSION_SECRET` | A new random 64-character hex secret (different from the Drive secret) |
-| `GOOGLE_APPS_SCRIPT_URL` | The deployed Google Apps Script `/exec` web app URL |
-| `GOOGLE_APPS_SCRIPT_SECRET` | The value of Apps Script's `APP_SECRET` |
+| `WEDDING_SESSION_SECRET` | Unique randomly generated 64-character hexadecimal secret |
+| `GOOGLE_CLIENT_ID` | Your Google OAuth Desktop client ID from Step 1 |
+| `GOOGLE_CLIENT_SECRET` | Your Google OAuth Desktop client secret from Step 1 |
+| `GOOGLE_REFRESH_TOKEN` | The refresh token stored in `.env.local` by Step 2 |
 
-To generate a random secret:
-```bash
+Optional: `GOOGLE_DRIVE_FOLDER_ID=1ihLbsZeSl8hZ37Bec7mijpX6zkqr2IC4` (already included as default in code).
+
+Generate a session secret with:
+
+```powershell
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-4. Deploy or redeploy after adding environment variables. Visit the Vercel URL in a private/incognito window: without the password, you see **only the login page**.
-5. Sign in, set wedding details, add the planning team, then privately share the website URL and website password with your planners.
-6. Confirm that Settings says **Google Drive connected**. Check the Drive folder for `wedding-planner-data.json` and `Wedding Planner Images/` after saving something.
+**Don't use the wedding website password as any other secret.** Never commit `.env.local`, print your refresh token in GitHub issues or chat, or share these secrets with planners. Remember to update the Vercel configuration if you rotate or revoke a refresh token.
 
-**Vercel warning:** A serverless deployment has no persistent local filesystem. To prevent false confidence and accidental data loss, the app explicitly **refuses to load wedding data on Vercel without the Google Drive integration configured**. Local test mode only works on your own computer.
+Once the environment variables are saved, go to **Vercel → Deployments → Redeploy** to activate them. `GOOGLE_APPS_SCRIPT_URL` and `GOOGLE_APPS_SCRIPT_SECRET` are **not used anymore**; you can remove those older variables if you previously set them.
 
-## D. Security and collaboration notes
+## 4 — Verify the deployment
 
-- The shared password grants **everyone with that password full read/write/delete access**. The Planning Team field is display-only: it does not create separate identities or access restrictions. Activity entries identify the name selected on a device, not a verified individual.
-- Password checks run on the server; sessions use tamper-resistant HMAC signatures and secure/HttpOnly/SameSite cookies. Image files and APIs are also guarded by the session.
-- Basic wrong-password throttling is in memory and therefore **per serverless instance**. For a widely shared public Vercel URL, use Vercel's firewall/rate-limiting or a stronger user account provider; don't rely only on per-instance throttling against distributed attacks. Rotate the shared password if it spreads beyond your planning team.
-- Use a secret Google Apps Script token **separate from** the website password, stored only on the server and in Apps Script Script Properties.
-- Photo size: up to 3 MB each. Drive Apps Script has Google quota, execution and administrator policy limits, so this lightweight integration suits a small wedding team, not thousands of users.
-- Uploaded files stay in the Drive image folder even when an inspiration card is deleted, so you can recover them manually.
-- External image links (including the demo inspirations) display from the source website; uploaded images are stored in Drive. The starter demo images and the decorative hero photo may require an internet connection.
-- You can export all planning records as a JSON backup from Settings. The app intentionally does not auto-import local demo data into your shared Drive workspace.
+1. Open the deployed Vercel URL in a private browser window. Verify that it requests the password before showing the planning workspace.
+2. Enter `STWed2027`.
+3. Open **Settings**. You should see **Google Drive connected**.
+4. Add a task called `Test Drive connection`.
+5. Refresh the page. The task should remain.
+6. Open the configured Drive folder. You should see a file like `wedding-planner--tasks--<id>.json`.
+7. Upload a small inspiration photo and check the `Wedding Planner Images` folder.
+8. Only then share the website URL and password privately with planners.
 
-## E. Run tests / understand the project
+If settings load but saving fails, inspect **Vercel → Logs** for details. Common causes: OAuth token expired, wrong client ID/secret, Drive API not enabled, insufficient folder access, or a Google Workspace restriction.
+
+## 5 — Local preview without connecting Google
+
+The app also runs locally without Google API credentials, using a demo dataset saved on **your own computer** in `.local-data`. This mode is **not shared** and should not be used on Vercel.
+
+On Windows, double-click `START-WEDDING-PLANNER.bat`, or run:
+
+```bash
+npm run dev
+```
+
+Visit `http://localhost:3000` and enter `STWed2027`. The app uses the Drive backend when all 3 Google credentials are present; otherwise, it uses local demo mode on your computer. On Vercel, it deliberately returns a configuration error if Drive credentials are missing instead of pretending to save data.
+
+## Feature set
+
+- **Overview:** Wedding countdown, task progress, guests, budget and inspiration previews
+- **Tasks:** Add, assign, prioritize, edit, complete, delete and filter items
+- **Inspiration:** Image uploads or image URLs, with captions, category and notes
+- **Budget:** Estimates, actual amounts, payments and currency setting
+- **Guests:** RSVP, meal, group, plus one and notes
+- **Vendors:** Contact information, quotes and statuses
+- **Timeline:** Milestones, dates and completion
+- **Team:** Named planners (for assignment and activity attribution)
+- **Settings:** Couple names, wedding details, JSON backup export and storage status
+
+The website is responsive for desktop, tablet and mobile; it uses a desktop sidebar and mobile tab navigation.
+
+## Security, cost and limitations
+
+- The website password is verified **server-side**, with a signed, HttpOnly, SameSite cookie. Unauthenticated users cannot access API data or private photos. **Anyone with the shared password can edit/delete data**. Team member names are not separate verified accounts.
+- **Google Drive OAuth credentials are only ever used by the server**. Google Drive should have its folder sharing set to **Restricted**.
+- Google Drive's **free API usage and existing personal storage allowance** may be sufficient for a small wedding team. Quotas, billing rules, OAuth access rules, and Vercel free-plan usage limits still apply; it is not a guarantee of unlimited free use.
+- The app saves each item separately in Drive to reduce cross-item conflicts. Concurrent updates to the same item are last-writer-wins.
+- Upload maximum is 3 MB/image due to Vercel request-size limits. Deleting an inspiration entry does not delete the uploaded file from Drive (allowing manual recovery).
+- Google Drive isn't a database, so very large record counts may make dashboard loading slower. You can download a JSON backup from Settings.
+- The UI uses external decorative/placeholder images; shared uploaded images come only through the app from your Google Drive.
+
+## Project structure
+
+```text
+api/index.js                       # Vercel handler
+lib/app.js                         # Protected HTTP routes / login / data APIs
+lib/security.js                    # Password gate and signed cookies
+lib/data.js                        # Field validation / change operations
+lib/store.js                       # Direct Drive record storage or local demo
+lib/drive.js                       # Google OAuth token refresh and REST API
+scripts/connect-google-drive.mjs   # One-time local Google authorization
+web/                               # Responsive website
+server.js                          # Local server
+vercel.json                        # Vercel configuration
+.env.example                       # Non-secret env reference
+tests/                             # Local unit and HTTP security tests
+```
+
+No Apps Script, database driver, frontend build system, or paid dependency is required.
 
 ```bash
 npm test
 npm run check
 ```
-
-`npm test` exercises task edits, safe validation, login failure, password-protected API/page access, session cookies, task persistence, image uploads, and logout. `npm run check` validates JavaScript syntax without external build tools.
-
-```text
-wedding-planner/
-├── api/index.js              # Vercel serverless handler
-├── lib/app.js                # Node HTTP router, login and private APIs
-├── lib/security.js           # HMAC sessions and password protection
-├── lib/data.js               # Field validation and change operations
-├── lib/store.js              # Drive Apps Script bridge / local test store
-├── lib/sample.js             # Local demo data and starter checklist
-├── web/app.html              # Protected application shell
-├── web/app.js                # Interactive UI, sections and dialogs
-├── web/styles.css            # Responsive styling
-├── web/login.html            # Public password gate (no data shown)
-├── google-apps-script/
-│   ├── Code.gs               # Google Drive backend script
-│   └── SETUP.md              # Google Drive integration guide
-├── tests/                    # Security and functional smoke tests
-├── .env.example              # Environment variable template
-├── .env.local                # Local development ONLY, gitignored
-├── START-WEDDING-PLANNER.bat # Windows launcher
-├── server.js                 # Local Node.js server
-└── vercel.json               # Vercel routing and bundled asset config
-```
-
-No paid application service is required for a small planning team beyond any limits/fees from Vercel and Google Workspace that apply to your accounts. Connect Drive **before** inviting your planners, so all their changes are saved to the same real place.
-#   f o r e v e r - a n d - a l w a y s - w e d d i n g - p l a n n e r  
- 
